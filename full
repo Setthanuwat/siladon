@@ -32,6 +32,7 @@ const int driveDC_INB = 4;
 
 bool setup_complete = false;
 bool door_status = false;
+bool complet = false;
 
 void setup() {
   Wire.begin(SLAVE_ADDR);
@@ -94,7 +95,7 @@ void MachineSetup(){
 }
 
 String MenuBegin(){
-  
+  complet = false;
   for (int i = 0; i < 3; i++) {
     buttonState[i] = digitalRead(button_pin[i]);
   }
@@ -133,7 +134,7 @@ String MenuBegin(){
     }
 
   }
-
+  complet = True;
 }
 
 void loop() {
@@ -165,6 +166,7 @@ void loop() {
 }
 
 void operationWhenMenu1() {
+  complet = false;
   Serial.println("start_1");
   digitalWrite(Relay_LED_Red, HIGH);
   delay(100);
@@ -215,11 +217,12 @@ void operationWhenMenu1() {
     digitalWrite(stepPin, LOW);
     delayMicroseconds(500);
   }
-
+  complet = True;
   delay(1000);
 }
 
 void operationWhenMenu2() {
+  complet = false;
   Serial.println("start_2");
   digitalWrite(Relay_LED_Red, HIGH);
   delay(100);
@@ -270,7 +273,7 @@ void operationWhenMenu2() {
     digitalWrite(stepPin, LOW);
     delayMicroseconds(500);
   }
-
+  complet = True;
   delay(1000);
 }
 
@@ -304,9 +307,10 @@ String receive_i2c(){
 }
 
 void limitSwitchInterrupt() {
-
+  if(complet == false){
   door_status = false;
   setup_complete = false;
+  }
 }
 void when_door_opened(){
   Serial.println("Door is Opened...");
