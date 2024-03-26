@@ -99,13 +99,37 @@ void loop() {
     Serial.println("Select Menu is "+select_menu);
     if (select_menu == "100") {
       // กรณีที่จะทำงานเมื่อ select_menu เป็น "100"
-      Serial.println("<<-------------------- MENU 1 --------------------------->>");
-      operationWhenMenu1();
+      Serial.println("<<-------------------- Big_Plate --------------------------->>");
+      Big_Plate();
       delay(500);
     } else if (select_menu == "200") {
       // กรณีที่จะ reset ระบบ
-      Serial.println("<<-------------------- MENU 2 --------------------------->>");
-      operationWhenMenu2();
+      Serial.println("<<-------------------- Med_Plate --------------------------->>");
+      Med_Plate();
+      delay(500);
+    }
+    else if (select_menu == "300") {
+      // กรณีที่จะ reset ระบบ
+      Serial.println("<<-------------------- Small_Plate --------------------------->>");
+      Small_Plate();
+      delay(500);
+    }
+    else if (select_menu == "400") {
+      // กรณีที่จะ reset ระบบ
+      Serial.println("<<-------------------- Small_Bowl  --------------------------->>");
+      Small_Bowl();
+      delay(500);
+    }
+    else if (select_menu == "500") {
+      // กรณีที่จะ reset ระบบ
+      Serial.println("<<-------------------- Med_Bowl --------------------------->>");
+      Med_Bowl();
+      delay(500);
+    }
+    else if (select_menu == "600") {
+      // กรณีที่จะ reset ระบบ
+      Serial.println("<<-------------------- Small_Bowl --------------------------->>");
+      Small_Bowl();
       delay(500);
     }
   }
@@ -226,7 +250,7 @@ String MenuBegin(){
 }
 
 
-void operationWhenMenu1() {
+void Big_Plate() {
   Serial.println("start_1");
   digitalWrite(Relay_LED_Red, LOW);
   delay(100);
@@ -256,7 +280,7 @@ void operationWhenMenu1() {
     delayMicroseconds(500);
   }
 
-  analogWrite(driveDC_PWM, 150);
+  analogWrite(driveDC_PWM, 150);//แก้ความเร็วหมุน
   digitalWrite(driveDC_INA, LOW);
   digitalWrite(driveDC_INB, HIGH);
   delay(1000);
@@ -286,7 +310,7 @@ void operationWhenMenu1() {
   delay(1000);
 }
 //เมนู 2 
-void operationWhenMenu2() {
+void Med_Plate() {
   Serial.println("start_2");
   digitalWrite(Relay_LED_Red, LOW);
   delay(100);
@@ -348,7 +372,7 @@ void operationWhenMenu2() {
   delay(1000);
 }
 //เมนู 3
-void operationWhenMenu3() {
+void Small_Plate() {
   Serial.println("start_3");
   digitalWrite(Relay_LED_Red, LOW);
   delay(100);
@@ -408,7 +432,7 @@ void operationWhenMenu3() {
   delay(1000);
 }
 //เมนู 4
-void operationWhenMenu4() {
+void Big_Bowl() {
   Serial.println("start_4");
   digitalWrite(Relay_LED_Red, LOW);
   delay(100);
@@ -469,7 +493,7 @@ void operationWhenMenu4() {
 }
 
 //เมนู 5
-void operationWhenMenu5() {
+void Med_Bowl() {
   Serial.println("start_5");
   digitalWrite(Relay_LED_Red, LOW);
   delay(100);
@@ -530,7 +554,7 @@ void operationWhenMenu5() {
 }
 
 //เมนู 6
-void operationWhenMenu6() {
+void Small_Bowl() {
   Serial.println("start_6");
   digitalWrite(Relay_LED_Red, LOW);
   delay(100);
