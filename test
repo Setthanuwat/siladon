@@ -1,0 +1,102 @@
+#include <Wire.h> 
+
+#define SLAVE_ADDR 9
+#define ANSWERSIZE 3
+
+//ปุ่มหน้าจอ
+int button_pin[3] = {17, 18, 19};
+int button_enter = 20;
+int buttonState[3];
+String select_menu = "";
+
+//step motor
+const int stepPin = 16;
+const int dirPin = 15;
+const int enPin = 14;
+
+//relay advice
+const int Relay_PumpSp = 12;
+//const int Relay_PumpWater = 11;
+const int Start_button = 13;           //used to be relay_fan 
+
+//LED
+const int Relay_LED_Red = 10;
+const int Relay_LED_Green=  8 ; 
+const int Relay_LED_Blue = 9;
+//SW
+const int limitSwitchPin = 3;
+const int limitmotor = 2;
+//dc_motor_หมุน
+const int driveDC_PWM = 7;
+const int driveDC_INA = 5;
+const int driveDC_INB = 4;
+
+bool setup_complete = false;
+bool door_status = false;
+bool complet = false;
+int x = 300;
+
+int test = 0;
+
+void setup() {
+  // put your setup code here, to run once:
+  pinMode(stepPin, OUTPUT);
+  pinMode(dirPin, OUTPUT);
+  pinMode(enPin, OUTPUT);
+  pinMode(limitmotor, INPUT_PULLUP);
+  Serial.begin(9600);
+  digitalWrite(enPin, LOW);
+   Serial.begin(9600);
+  pinMode(stepPin, OUTPUT);
+  pinMode(dirPin, OUTPUT);
+  pinMode(enPin, OUTPUT);
+  pinMode(Relay_PumpSp, OUTPUT);
+  //pinMode(Relay_PumpWater, OUTPUT);
+//  pinMode(Relay_Fan, OUTPUT);
+  pinMode(Relay_LED_Green, OUTPUT);
+  pinMode(Relay_LED_Red, OUTPUT);
+  pinMode(Relay_LED_Blue, OUTPUT);
+  pinMode(limitmotor, INPUT_PULLUP);
+  pinMode(limitSwitchPin, INPUT_PULLUP);
+  pinMode(button_pin[0], INPUT_PULLUP);
+  pinMode(button_pin[1], INPUT_PULLUP);
+  pinMode(button_pin[2], INPUT_PULLUP);
+
+  digitalWrite(enPin, LOW);
+  digitalWrite(Relay_LED_Red, LOW);
+  digitalWrite(Relay_LED_Green, LOW);
+  digitalWrite(Relay_LED_Blue, LOW);
+  digitalWrite(Relay_PumpSp, LOW);
+  test = 0;
+}
+
+void loop() {
+  digitalWrite(dirPin, HIGH);
+  
+  while(digitalRead(limitmotor) == HIGH && test == 0 ){
+    digitalWrite(stepPin, HIGH);
+    delayMicroseconds(500);
+    digitalWrite(stepPin, LOW);
+    delayMicroseconds(500);
+  }
+  test == 1;
+  digitalWrite(dirPin, LOW);
+  for(int y = 0; y < x;y++){
+    digitalWrite(stepPin, HIGH);
+    delayMicroseconds(500);
+    digitalWrite(stepPin, LOW);
+    delayMicroseconds(500);
+  }
+  analogWrite(driveDC_PWM, 150);
+  digitalWrite(driveDC_INA, LOW);
+  digitalWrite(driveDC_INB, HIGH);
+  delay(1000);
+  digitalWrite(Relay_PumpSp, HIGH);
+  delay(10000);  // เวลาในการพ่นสเป
+  digitalWrite(Relay_PumpSp, LOW);
+  delay(500);
+  digitalWrite(driveDC_INA, LOW);
+  digitalWrite(driveDC_INB, LOW);
+  delay(500);
+
+}
