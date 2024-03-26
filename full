@@ -5,6 +5,7 @@
 
 //ปุ่มหน้าจอ
 int button_pin[3] = {17, 18, 19};
+int button_enter = 20;
 int buttonState[3];
 String select_menu = "";
 
@@ -15,16 +16,16 @@ const int enPin = 14;
 
 //relay advice
 const int Relay_PumpSp = 12;
-const int Relay_PumpWater = 11;
-const int Relay_Fan = 13;
+//const int Relay_PumpWater = 11;
+const int Start_button = 13;           //used to be relay_fan 
 
 //LED
 const int Relay_LED_Red = 10;
 const int Relay_LED_Green=  8 ; 
 const int Relay_LED_Blue = 9;
 //SW
-const int limitSwitchPin = 2;
-const int limitmotor = 3;
+const int limitSwitchPin = 3;
+const int limitmotor = 2;
 //dc_motor_หมุน
 const int driveDC_PWM = 7;
 const int driveDC_INA = 5;
@@ -34,6 +35,20 @@ bool setup_complete = false;
 bool door_status = false;
 bool complet = false;
 
+unsigned long previousMillis = 0;
+const long interval = 500;
+
+// ---- FUNCTIONS ----// 
+void MachineSetup();
+String MenuBegin();
+void operationWhenMenu1();
+void operationWhenMenu2();
+void write_i2c(int value);
+String receive_i2c();
+void limitSwitchInterrupt();
+void when_door_opened();
+
+
 void setup() {
   Wire.begin(SLAVE_ADDR);
   Serial.begin(9600);
@@ -41,8 +56,8 @@ void setup() {
   pinMode(dirPin, OUTPUT);
   pinMode(enPin, OUTPUT);
   pinMode(Relay_PumpSp, OUTPUT);
-  pinMode(Relay_PumpWater, OUTPUT);
-  pinMode(Relay_Fan, OUTPUT);
+  //pinMode(Relay_PumpWater, OUTPUT);
+//  pinMode(Relay_Fan, OUTPUT);
   pinMode(Relay_LED_Green, OUTPUT);
   pinMode(Relay_LED_Red, OUTPUT);
   pinMode(Relay_LED_Blue, OUTPUT);
@@ -55,25 +70,58 @@ void setup() {
   digitalWrite(enPin, LOW);
   digitalWrite(Relay_LED_Red, LOW);
   digitalWrite(Relay_LED_Green, LOW);
-  digitalWrite(Relay_LED_Blue, HIGH);
+  digitalWrite(Relay_LED_Blue, LOW);
   digitalWrite(Relay_PumpSp, LOW);
-  digitalWrite(Relay_PumpWater, LOW);
-  digitalWrite(Relay_Fan, LOW);
+  //digitalWrite(Relay_PumpWater, LOW);
+  //digitalWrite(Relay_Fan, LOW);
 
   //  interrupt
   attachInterrupt(digitalPinToInterrupt(limitSwitchPin), limitSwitchInterrupt, HIGH);
+  MachineSetup_SP()
 }
 
-void MachineSetup(){
-  digitalWrite(Relay_LED_Green, HIGH);
-  digitalWrite(Relay_LED_Red, HIGH);
+void loop() {
+  Serial.println(digitalRead(limitSwitchPin));
+  Serial.println(digitalRead(setup_complete));
+  //Serial.println(digitalRead(door_status));
+
+  while(setup_complete == false && digitalRead(limitSwitchPin)==LOW){
+    door_status = true;
+    Serial.println("Start Setup");
+    MachineSetup();
+  }
+  if(door_status == false){
+    when_door_opened();
+  }
+  else if(door_status == true && setup_complete == true){
+    Serial.println("Start Select Menu");
+    select_menu = MenuBegin(); 
+    Serial.println("Select Menu is "+select_menu);
+    if (select_menu == "100") {
+      // กรณีที่จะทำงานเมื่อ select_menu เป็น "100"
+      Serial.println("<<-------------------- MENU 1 --------------------------->>");
+      operationWhenMenu1();
+      delay(500);
+    } else if (select_menu == "200") {
+      // กรณีที่จะ reset ระบบ
+      Serial.println("<<-------------------- MENU 2 --------------------------->>");
+      operationWhenMenu2();
+      delay(500);
+    }
+  }
+}
+
+
+//----------------------------------------------------------------------------------------------------//
+// ---------------------------------------- FUNCTION BELOW HERE --------------------------------------//
+void MachineSetup_SP(){
+  digitalWrite(Relay_LED_Green, LOW);
+  digitalWrite(Relay_LED_Red, LOW);
+  digitalWrite(Relay_LED_Blue, HIGH);
   Serial.println("start");
-  delay(1000);
+  delay(100);
   
   //------------------ setup system -------------------//
-  digitalWrite(Relay_LED_Green, LOW);
-  digitalWrite(Relay_LED_Red, HIGH);
-  digitalWrite(Relay_LED_Blue, LOW);
   digitalWrite(dirPin, HIGH);
   Serial.println("door state : " + String(door_status));
   while(digitalRead(limitmotor) == HIGH && door_status == true){
@@ -83,8 +131,49 @@ void MachineSetup(){
     delayMicroseconds(500);
     Serial.println("door state : " + String(door_status));
   }
+  digitalWrite(Relay_PumpSp, HIGH);
+  delay(75000);  // เวลาในการพ่นสเป
+  digitalWrite(Relay_PumpSp, LOW);
+  delay(1000);
+  digitalWrite(Relay_LED_Blue, LOW);
+  delay(100);
+  digitalWrite(Relay_LED_Red, LOW);
+  delay(100);
+  digitalWrite(Relay_LED_Green, HIGH);
+
+  //----------------- complete setup system --------------//
+  Serial.println("------->>> Setup Subsytem Complete ");
+
+  Serial.println("------->>> Setup Complete <<<------------- ");
+  
+}
+void MachineSetup(){
+  digitalWrite(Relay_LED_Green, LOW);
+  digitalWrite(Relay_LED_Red, LOW);
   digitalWrite(Relay_LED_Blue, HIGH);
-  digitalWrite(Relay_LED_Red, HIGH);
+  Serial.println("start");
+  delay(100);
+  
+  //------------------ setup system -------------------//
+  digitalWrite(dirPin, HIGH);
+  Serial.println("door state : " + String(door_status));
+  while(digitalRead(limitmotor) == HIGH && door_status == true){
+    digitalWrite(stepPin, HIGH);
+    delayMicroseconds(500);
+    digitalWrite(stepPin, LOW);
+    delayMicroseconds(500);
+    Serial.println("door state : " + String(door_status));
+  }
+  digitalWrite(dirPin, LOW);
+  for(int x =0; x < 200;x++){
+    digitalWrite(stepPin, HIGH);
+    delayMicroseconds(500);
+    digitalWrite(stepPin, LOW);
+    delayMicroseconds(500);
+    Serial.println("door state : " + String(door_status));
+  }
+  digitalWrite(Relay_LED_Blue, LOW);
+  digitalWrite(Relay_LED_Red, LOW);
   digitalWrite(Relay_LED_Green, HIGH);
   //----------------- complete setup system --------------//
   Serial.println("------->>> Setup Subsytem Complete ");
@@ -134,51 +223,23 @@ String MenuBegin(){
     }
 
   }
-  complet = True;
 }
 
-void loop() {
-  while(setup_complete == false && digitalRead(2)==LOW){
-    door_status = true;
-    Serial.println("Start Setup");
-    MachineSetup();
-  }
-  if(door_status == false){
-    when_door_opened();
-  }
-  else if(door_status == true && setup_complete == true){
-    Serial.println("Start Select Menu");
-    select_menu = MenuBegin(); 
-    Serial.println("Select Menu is "+select_menu);
-    if (select_menu == "100") {
-      // กรณีที่จะทำงานเมื่อ select_menu เป็น "100"
-      Serial.println("<<-------------------- MENU 1 --------------------------->>");
-      operationWhenMenu1();
-      delay(500);
-    } else if (select_menu == "200") {
-      // กรณีที่จะ reset ระบบ
-      Serial.println("<<-------------------- MENU 2 --------------------------->>");
-      operationWhenMenu2();
-      delay(500);
-    }
-  }
-
-}
 
 void operationWhenMenu1() {
-  complet = false;
   Serial.println("start_1");
-  digitalWrite(Relay_LED_Red, HIGH);
+  digitalWrite(Relay_LED_Red, LOW);
   delay(100);
-  digitalWrite(Relay_LED_Green, HIGH);
+  digitalWrite(Relay_LED_Green, LOW);
   delay(100);
   digitalWrite(Relay_LED_Blue, HIGH);
   delay(1000);
-  digitalWrite(Relay_PumpWater, HIGH);
-  delay(1000);
-  digitalWrite(Relay_Fan, HIGH);
-  delay(1000);
-  digitalWrite(dirPin, HIGH);
+  //digitalWrite(Relay_PumpWater, HIGH);
+  //delay(1000);
+  //digitalWrite(Relay_Fan, HIGH);
+  //delay(1000);
+  // set ตำแหน่งแขนกล
+  digitalWrite(dirPin, HIGH); //HIGH คือเคลื่อนที่ตูดลงหัวขึ้น
   while(digitalRead(limitmotor) == HIGH && door_status == true){
     digitalWrite(stepPin, HIGH);
     delayMicroseconds(500);
@@ -186,8 +247,8 @@ void operationWhenMenu1() {
     delayMicroseconds(500);
   }
 
-  // ทำงาน
-  digitalWrite(dirPin, LOW);
+  // ทำงานแขนพ่น
+  digitalWrite(dirPin, LOW);//LOW คือเคลื่อนที่ตูดขึ้นหัวลง
   for (int R = 0; R < 940; R++) {
     digitalWrite(stepPin, HIGH);
     delayMicroseconds(500);
@@ -206,10 +267,10 @@ void operationWhenMenu1() {
   digitalWrite(driveDC_INA, LOW);
   digitalWrite(driveDC_INB, LOW);
   delay(500);
-  digitalWrite(Relay_PumpWater, LOW);
-  delay(500);
-  digitalWrite(Relay_Fan, LOW);
-  delay(500);
+  //digitalWrite(Relay_PumpWater, LOW);
+  //delay(500);
+  //digitalWrite(Relay_Fan, LOW);
+  //delay(500);
   digitalWrite(dirPin, HIGH);
   for (int R = 0; R < 940; R++) {
     digitalWrite(stepPin, HIGH);
@@ -217,23 +278,28 @@ void operationWhenMenu1() {
     digitalWrite(stepPin, LOW);
     delayMicroseconds(500);
   }
-  complet = True;
-  delay(1000);
-}
-
-void operationWhenMenu2() {
-  complet = false;
-  Serial.println("start_2");
-  digitalWrite(Relay_LED_Red, HIGH);
+  digitalWrite(Relay_LED_Red, LOW);
   delay(100);
   digitalWrite(Relay_LED_Green, HIGH);
   delay(100);
+  digitalWrite(Relay_LED_Blue, LOW);
+  delay(1000);
+}
+//เมนู 2 
+void operationWhenMenu2() {
+  Serial.println("start_2");
+  digitalWrite(Relay_LED_Red, LOW);
+  delay(100);
+  digitalWrite(Relay_LED_Green, LOW);
+  delay(100);
   digitalWrite(Relay_LED_Blue, HIGH);
   delay(1000);
-  digitalWrite(Relay_PumpWater, HIGH);
-  delay(1000);
-  digitalWrite(Relay_Fan, HIGH);
-  delay(1000);
+  //digitalWrite(Relay_PumpWater, HIGH);
+  //delay(1000);
+  //digitalWrite(Relay_Fan, HIGH);
+  //delay(1000);
+
+  //ทำงาานแขนพ่น อันนี้เช็คว่าอยู่ตำแหน่งเริ่มต้นยัง
   digitalWrite(dirPin, HIGH);
   while(digitalRead(limitmotor) == HIGH && door_status == true){
     digitalWrite(stepPin, HIGH);
@@ -242,7 +308,7 @@ void operationWhenMenu2() {
     delayMicroseconds(500);
   }
 
-  // ทำงาน
+  // ทำงานแขนพ่น
   digitalWrite(dirPin, LOW);
   for (int R = 0; R < 1000; R++) {
     digitalWrite(stepPin, HIGH);
@@ -250,6 +316,67 @@ void operationWhenMenu2() {
     digitalWrite(stepPin, LOW);
     delayMicroseconds(500);
   }
+  //แท่นหมุน
+  analogWrite(driveDC_PWM, 150);
+  digitalWrite(driveDC_INA, LOW);
+  digitalWrite(driveDC_INB, HIGH);
+  delay(1000);
+  digitalWrite(Relay_PumpSp, HIGH);
+  delay(10000);  // เวลาในการพ่นสเป
+  digitalWrite(Relay_PumpSp, LOW);
+  delay(500);
+  //หยุดแท่นหมุน
+  digitalWrite(driveDC_INA, LOW);
+  digitalWrite(driveDC_INB, LOW);
+  delay(500);
+  //digitalWrite(Relay_PumpWater, LOW);
+  //delay(500);
+  //digitalWrite(Relay_Fan, LOW);
+  //delay(500);
+  digitalWrite(dirPin, HIGH);
+  for (int R = 0; R < 940; R++) {
+    digitalWrite(stepPin, HIGH);
+    delayMicroseconds(500);
+    digitalWrite(stepPin, LOW);
+    delayMicroseconds(500);
+  }
+  digitalWrite(Relay_LED_Red, LOW);
+  delay(100);
+  digitalWrite(Relay_LED_Green, HIGH);
+  delay(100);
+  digitalWrite(Relay_LED_Blue, LOW);
+  delay(1000);
+}
+//เมนู 3
+void operationWhenMenu3() {
+  Serial.println("start_3");
+  digitalWrite(Relay_LED_Red, LOW);
+  delay(100);
+  digitalWrite(Relay_LED_Green, LOW);
+  delay(100);
+  digitalWrite(Relay_LED_Blue, HIGH);
+  delay(1000);
+  //digitalWrite(Relay_PumpWater, HIGH);
+  //delay(1000);
+  //digitalWrite(Relay_Fan, HIGH);
+  //delay(1000);
+  // set ตำแหน่งแขนกล
+  digitalWrite(dirPin, HIGH); //HIGH คือเคลื่อนที่ตูดลงหัวขึ้น
+  while(digitalRead(limitmotor) == HIGH && door_status == true){
+    digitalWrite(stepPin, HIGH);
+    delayMicroseconds(500);
+    digitalWrite(stepPin, LOW);
+    delayMicroseconds(500);
+  }
+
+  // ทำงานแขนพ่น
+  digitalWrite(dirPin, LOW);//LOW คือเคลื่อนที่ตูดขึ้นหัวลง
+  for (int R = 0; R < 940; R++) {
+    digitalWrite(stepPin, HIGH);
+    delayMicroseconds(500);
+    digitalWrite(stepPin, LOW);
+    delayMicroseconds(500);
+  }
 
   analogWrite(driveDC_PWM, 150);
   digitalWrite(driveDC_INA, LOW);
@@ -262,10 +389,10 @@ void operationWhenMenu2() {
   digitalWrite(driveDC_INA, LOW);
   digitalWrite(driveDC_INB, LOW);
   delay(500);
-  digitalWrite(Relay_PumpWater, LOW);
-  delay(500);
-  digitalWrite(Relay_Fan, LOW);
-  delay(500);
+  //digitalWrite(Relay_PumpWater, LOW);
+  //delay(500);
+  //digitalWrite(Relay_Fan, LOW);
+  //delay(500);
   digitalWrite(dirPin, HIGH);
   for (int R = 0; R < 940; R++) {
     digitalWrite(stepPin, HIGH);
@@ -273,10 +400,195 @@ void operationWhenMenu2() {
     digitalWrite(stepPin, LOW);
     delayMicroseconds(500);
   }
-  complet = True;
+  digitalWrite(Relay_LED_Red, LOW);
+  delay(100);
+  digitalWrite(Relay_LED_Green, HIGH);
+  delay(100);
+  digitalWrite(Relay_LED_Blue, LOW);
+  delay(1000);
+}
+//เมนู 4
+void operationWhenMenu4() {
+  Serial.println("start_4");
+  digitalWrite(Relay_LED_Red, LOW);
+  delay(100);
+  digitalWrite(Relay_LED_Green, LOW);
+  delay(100);
+  digitalWrite(Relay_LED_Blue, HIGH);
+  delay(1000);
+  //digitalWrite(Relay_PumpWater, HIGH);
+  //delay(1000);
+  //digitalWrite(Relay_Fan, HIGH);
+  //delay(1000);
+  // set ตำแหน่งแขนกล
+  digitalWrite(dirPin, HIGH); //HIGH คือเคลื่อนที่ตูดลงหัวขึ้น
+  while(digitalRead(limitmotor) == HIGH && door_status == true){
+    digitalWrite(stepPin, HIGH);
+    delayMicroseconds(500);
+    digitalWrite(stepPin, LOW);
+    delayMicroseconds(500);
+  }
+
+  // ทำงานแขนพ่น
+  digitalWrite(dirPin, LOW);//LOW คือเคลื่อนที่ตูดขึ้นหัวลง
+  for (int R = 0; R < 940; R++) {
+    digitalWrite(stepPin, HIGH);
+    delayMicroseconds(500);
+    digitalWrite(stepPin, LOW);
+    delayMicroseconds(500);
+  }
+
+  analogWrite(driveDC_PWM, 150);
+  digitalWrite(driveDC_INA, LOW);
+  digitalWrite(driveDC_INB, HIGH);
+  delay(1000);
+  digitalWrite(Relay_PumpSp, HIGH);
+  delay(10000);  // เวลาในการพ่นสเป
+  digitalWrite(Relay_PumpSp, LOW);
+  delay(500);
+  digitalWrite(driveDC_INA, LOW);
+  digitalWrite(driveDC_INB, LOW);
+  delay(500);
+  //digitalWrite(Relay_PumpWater, LOW);
+  //delay(500);
+  //digitalWrite(Relay_Fan, LOW);
+  //delay(500);
+  digitalWrite(dirPin, HIGH);
+  for (int R = 0; R < 940; R++) {
+    digitalWrite(stepPin, HIGH);
+    delayMicroseconds(500);
+    digitalWrite(stepPin, LOW);
+    delayMicroseconds(500);
+  }
+  digitalWrite(Relay_LED_Red, LOW);
+  delay(100);
+  digitalWrite(Relay_LED_Green, HIGH);
+  delay(100);
+  digitalWrite(Relay_LED_Blue, LOW);
   delay(1000);
 }
 
+//เมนู 5
+void operationWhenMenu5() {
+  Serial.println("start_5");
+  digitalWrite(Relay_LED_Red, LOW);
+  delay(100);
+  digitalWrite(Relay_LED_Green, LOW);
+  delay(100);
+  digitalWrite(Relay_LED_Blue, HIGH);
+  delay(1000);
+  //digitalWrite(Relay_PumpWater, HIGH);
+  //delay(1000);
+  //digitalWrite(Relay_Fan, HIGH);
+  //delay(1000);
+  // set ตำแหน่งแขนกล
+  digitalWrite(dirPin, HIGH); //HIGH คือเคลื่อนที่ตูดลงหัวขึ้น
+  while(digitalRead(limitmotor) == HIGH && door_status == true){
+    digitalWrite(stepPin, HIGH);
+    delayMicroseconds(500);
+    digitalWrite(stepPin, LOW);
+    delayMicroseconds(500);
+  }
+
+  // ทำงานแขนพ่น
+  digitalWrite(dirPin, LOW);//LOW คือเคลื่อนที่ตูดขึ้นหัวลง
+  for (int R = 0; R < 940; R++) {
+    digitalWrite(stepPin, HIGH);
+    delayMicroseconds(500);
+    digitalWrite(stepPin, LOW);
+    delayMicroseconds(500);
+  }
+
+  analogWrite(driveDC_PWM, 150);
+  digitalWrite(driveDC_INA, LOW);
+  digitalWrite(driveDC_INB, HIGH);
+  delay(1000);
+  digitalWrite(Relay_PumpSp, HIGH);
+  delay(10000);  // เวลาในการพ่นสเป
+  digitalWrite(Relay_PumpSp, LOW);
+  delay(500);
+  digitalWrite(driveDC_INA, LOW);
+  digitalWrite(driveDC_INB, LOW);
+  delay(500);
+  //digitalWrite(Relay_PumpWater, LOW);
+  //delay(500);
+  //digitalWrite(Relay_Fan, LOW);
+  //delay(500);
+  digitalWrite(dirPin, HIGH);
+  for (int R = 0; R < 940; R++) {
+    digitalWrite(stepPin, HIGH);
+    delayMicroseconds(500);
+    digitalWrite(stepPin, LOW);
+    delayMicroseconds(500);
+  }
+  digitalWrite(Relay_LED_Red, LOW);
+  delay(100);
+  digitalWrite(Relay_LED_Green, HIGH);
+  delay(100);
+  digitalWrite(Relay_LED_Blue, LOW);
+  delay(1000);
+}
+
+//เมนู 6
+void operationWhenMenu6() {
+  Serial.println("start_6");
+  digitalWrite(Relay_LED_Red, LOW);
+  delay(100);
+  digitalWrite(Relay_LED_Green, LOW);
+  delay(100);
+  digitalWrite(Relay_LED_Blue, HIGH);
+  delay(1000);
+  //digitalWrite(Relay_PumpWater, HIGH);
+  //delay(1000);
+  //digitalWrite(Relay_Fan, HIGH);
+  //delay(1000);
+  // set ตำแหน่งแขนกล
+  digitalWrite(dirPin, HIGH); //HIGH คือเคลื่อนที่ตูดลงหัวขึ้น
+  while(digitalRead(limitmotor) == HIGH && door_status == true){
+    digitalWrite(stepPin, HIGH);
+    delayMicroseconds(500);
+    digitalWrite(stepPin, LOW);
+    delayMicroseconds(500);
+  }
+
+  // ทำงานแขนพ่น
+  digitalWrite(dirPin, LOW);//LOW คือเคลื่อนที่ตูดขึ้นหัวลง
+  for (int R = 0; R < 940; R++) {
+    digitalWrite(stepPin, HIGH);
+    delayMicroseconds(500);
+    digitalWrite(stepPin, LOW);
+    delayMicroseconds(500);
+  }
+
+  analogWrite(driveDC_PWM, 150);
+  digitalWrite(driveDC_INA, LOW);
+  digitalWrite(driveDC_INB, HIGH);
+  delay(1000);
+  digitalWrite(Relay_PumpSp, HIGH);
+  delay(10000);  // เวลาในการพ่นสเป
+  digitalWrite(Relay_PumpSp, LOW);
+  delay(500);
+  digitalWrite(driveDC_INA, LOW);
+  digitalWrite(driveDC_INB, LOW);
+  delay(500);
+  //digitalWrite(Relay_PumpWater, LOW);
+  //delay(500);
+  //digitalWrite(Relay_Fan, LOW);
+  //delay(500);
+  digitalWrite(dirPin, HIGH);
+  for (int R = 0; R < 940; R++) {
+    digitalWrite(stepPin, HIGH);
+    delayMicroseconds(500);
+    digitalWrite(stepPin, LOW);
+    delayMicroseconds(500);
+  }
+   digitalWrite(Relay_LED_Red, LOW);
+  delay(100);
+  digitalWrite(Relay_LED_Green, HIGH);
+  delay(100);
+  digitalWrite(Relay_LED_Blue, LOW);
+  delay(1000);
+}
 
 void write_i2c(int value) {
   Wire.beginTransmission(SLAVE_ADDR);
@@ -307,25 +619,34 @@ String receive_i2c(){
 }
 
 void limitSwitchInterrupt() {
-  if(complet == false){
+  //if(complet == false){
   door_status = false;
   setup_complete = false;
-  }
+  //}
 }
+//ทำงานตอนประตูเปิด
 void when_door_opened(){
   Serial.println("Door is Opened...");
   delay(200);
-  digitalWrite(Relay_LED_Red, LOW);
-  //delay(500);
-  digitalWrite(Relay_LED_Green, LOW);
+  unsigned long currentMillis = millis();
+  //if(currentMillis - previousMillis >= interval){
+    //if( digitalRead(Relay_LED_Red)== HIGH ){
+     digitalWrite(Relay_LED_Red, HIGH);
+    //}
+    //else{
+      //digitalWrite(Relay_LED_Red, HIGH);
+    //}
+
+ // }
+  digitalWrite(Relay_LED_Green, HIGH);
   //delay(1000);
   digitalWrite(Relay_LED_Blue, HIGH);
   //delay(1000);
   digitalWrite(Relay_PumpSp, LOW);
   //delay(1000);
-  digitalWrite(Relay_PumpWater, LOW);
+  //digitalWrite(Relay_PumpWater, LOW);
   //delay(1000);
-  digitalWrite(Relay_Fan, LOW);
+  //digitalWrite(Relay_Fan, LOW);
   //delay(1000);
   digitalWrite(driveDC_INA, LOW);
   //delay(1000);
