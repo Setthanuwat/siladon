@@ -116,8 +116,8 @@ void loop() {
     }
     else if (select_menu == "400") {
       // กรณีที่จะ reset ระบบ
-      Serial.println("<<-------------------- Small_Bowl  --------------------------->>");
-      Small_Bowl();
+      Serial.println("<<-------------------- Big_Bowl  --------------------------->>");
+      Big_Bowl();
       delay(500);
     }
     else if (select_menu == "500") {
