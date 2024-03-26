@@ -1,0 +1,38 @@
+int x = 300;
+
+const int stepPin = 16;
+const int dirPin = 15;
+const int enPin = 14;
+int test = 0;
+
+const int limitmotor = 2;
+void setup() {
+  // put your setup code here, to run once:
+  pinMode(stepPin, OUTPUT);
+  pinMode(dirPin, OUTPUT);
+  pinMode(enPin, OUTPUT);
+  pinMode(limitmotor, INPUT_PULLUP);
+  Serial.begin(9600);
+  digitalWrite(enPin, LOW);
+  test = 0;
+}
+
+void loop() {
+  digitalWrite(dirPin, HIGH);
+  
+  while(digitalRead(limitmotor) == HIGH && test == 0 ){
+    digitalWrite(stepPin, HIGH);
+    delayMicroseconds(500);
+    digitalWrite(stepPin, LOW);
+    delayMicroseconds(500);
+  }
+  test == 1;
+  digitalWrite(dirPin, LOW);
+  for(int y = 0; y < x;y++){
+    digitalWrite(stepPin, HIGH);
+    delayMicroseconds(500);
+    digitalWrite(stepPin, LOW);
+    delayMicroseconds(500);
+  }
+
+}
