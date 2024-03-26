@@ -77,7 +77,7 @@ void setup() {
 
   //  interrupt
   attachInterrupt(digitalPinToInterrupt(limitSwitchPin), limitSwitchInterrupt, HIGH);
-  MachineSetup_SP()
+  MachineSetup_SP();
 }
 
 void loop() {
